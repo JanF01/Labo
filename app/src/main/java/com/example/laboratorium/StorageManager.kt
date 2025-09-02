@@ -36,8 +36,6 @@ object StorageManager {
     private val PASSED_TASKS_KEY = stringPreferencesKey("passed_tasks")
 
 
-
-
     /**
      * Dodaje nowego studenta do listy studentów
      */

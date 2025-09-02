@@ -80,6 +80,8 @@ fun StationSelectedGradingScreen(
     val tasks by StorageManager.getAllTasks(context).collectAsState(initial = emptyList())
     val passedTasks by StorageManager.getPassedTasks(context).collectAsState(initial = emptyMap())
 
+
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -102,7 +104,7 @@ fun StationSelectedGradingScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(students) { student ->
+                items(students.sortedBy { it.albumNumber }) { student ->
                     // stan proponowanej oceny dla każdego studenta.
                     var editedProposedGradeText by rememberSaveable(student.albumNumber) {
                         mutableStateOf(student.proposedGrade.toString())

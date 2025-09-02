@@ -22,6 +22,7 @@ import androidx.activity.compose.setContent
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.content.Intent
 
 
@@ -71,7 +72,7 @@ fun StudentsListScreen(modifier: Modifier = Modifier, snackbarHostState: Snackba
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    var showConfirmDialog by remember { mutableStateOf(false) }
+    var showConfirmDialog by rememberSaveable { mutableStateOf(false) }
 
     val studentsFlow = StorageManager.getAllStudents(context)
     val assignmentsFlow = StorageManager.getStationAssignments(context)
@@ -103,7 +104,7 @@ fun StudentsListScreen(modifier: Modifier = Modifier, snackbarHostState: Snackba
 
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize(),
+                    .weight(1f) ,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 sortedAssignments.forEach { (station, assignedAlbumNumbers) ->
@@ -132,9 +133,10 @@ fun StudentsListScreen(modifier: Modifier = Modifier, snackbarHostState: Snackba
                                 )
                                 Row {
                                     IconButton(onClick = {
-                                        val intent = Intent(context, AddStudentActivity::class.java).apply {
-                                            putExtra("albumNumberToEdit", student.albumNumber)
-                                        }
+                                        val intent =
+                                            Intent(context, AddStudentActivity::class.java).apply {
+                                                putExtra("albumNumberToEdit", student.albumNumber)
+                                            }
                                         context.startActivity(intent)
                                     }) {
                                         Icon(
@@ -167,20 +169,26 @@ fun StudentsListScreen(modifier: Modifier = Modifier, snackbarHostState: Snackba
                     }
                 }
             }
-        }
 
 
-        Button(
-            onClick = { showConfirmDialog = true },
-            shape = RoundedCornerShape(50),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-            modifier = Modifier
-                .fillMaxWidth(0.6f)
-                .height(50.dp)
-                .align(Alignment.BottomCenter)
-        ) {
-            Text("Zatwierdź", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+
+            Button(
+                onClick = { showConfirmDialog = true },
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+                modifier = Modifier
+                    .fillMaxWidth(0.6f)
+                    .height(50.dp)
+                    .padding(bottom = 12.dp)
+            ) {
+                Text(
+                    "Zatwierdź",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 
@@ -188,28 +196,27 @@ fun StudentsListScreen(modifier: Modifier = Modifier, snackbarHostState: Snackba
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
+
             title = {
-                Text(
-                    "Potwierdź",
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold
-                )
+                    Text(
+                        "Potwierdź",
+                        fontWeight = FontWeight.Bold,
+                    )
             },
             text = {
-                Text(
-                    "Czy na pewno chcesz zatwierdzić listę i przejść do dodawania zadań?",
-                    color = Color.Black
-                )
+                    Text(
+                        "Czy na pewno chcesz zatwierdzić listę i przejść do dodawania zadań?",
+                    )
             },
             confirmButton = {
                 Button(
                     onClick = {
                         showConfirmDialog = false
-
                         val intent = Intent(context, AddTaskActivity::class.java)
                         context.startActivity(intent)
                     }
                 ) {
+
                     Text("Tak")
                 }
             },
@@ -219,10 +226,7 @@ fun StudentsListScreen(modifier: Modifier = Modifier, snackbarHostState: Snackba
                 ) {
                     Text("Nie")
                 }
-            },
-            containerColor = Color.White,
-            textContentColor = Color.Black,
-            titleContentColor = Color.Black,
+            }
         )
     }
 }

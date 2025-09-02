@@ -23,7 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.laboratorium.ui.theme.LaboratoriumTheme
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.OutputStream
 import java.util.Date
@@ -152,7 +151,7 @@ fun GradingScreen(modifier: Modifier = Modifier, snackbarHostState: SnackbarHost
                     }
                 }
             }
-            // Button to export to Excel
+
             FloatingActionButton(
                 onClick = {
                     val currentDateTime = Date()
@@ -165,7 +164,21 @@ fun GradingScreen(modifier: Modifier = Modifier, snackbarHostState: SnackbarHost
                     .align(Alignment.End)
                     .padding(top = 32.dp, end = 0.dp)
             ) {
-                Icon(Icons.Default.Share, contentDescription = "Eksportuj do Excela", tint = Color.White)
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Eksportuj",
+                        color = Color.White
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Icon(
+                        Icons.Default.Share,
+                        contentDescription = "Eksportuj do Excela",
+                        tint = Color.White
+                    )
+                }
             }
 
 
@@ -189,8 +202,8 @@ fun GradingScreen(modifier: Modifier = Modifier, snackbarHostState: SnackbarHost
         if (showConfirmClearDialog) {
             AlertDialog(
                 onDismissRequest = { showConfirmClearDialog = false },
-                title = { Text("Potwierdź", color = Color.Black, fontWeight = FontWeight.Bold) },
-                text = { Text("Czy na pewno chcesz zakończyć laboratorium? Spowoduje to wyczyszczenie wszystkich danych.", color = Color.Black) },
+                title = { Text("Potwierdź", fontWeight = FontWeight.Bold) },
+                text = { Text("Czy na pewno chcesz zakończyć laboratorium? Spowoduje to wyczyszczenie wszystkich danych.") },
                 confirmButton = {
                     Button(
                         onClick = {
@@ -213,9 +226,6 @@ fun GradingScreen(modifier: Modifier = Modifier, snackbarHostState: SnackbarHost
                         Text("Nie")
                     }
                 },
-                containerColor = Color.White,
-                textContentColor = Color.Black,
-                titleContentColor = Color.Black,
             )
         }
     }

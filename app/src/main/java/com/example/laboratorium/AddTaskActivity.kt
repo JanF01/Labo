@@ -25,7 +25,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.text.style.TextAlign
 
 class AddTaskActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,26 +72,14 @@ class AddTaskActivity : ComponentActivity() {
 fun AddTaskScreen(modifier: Modifier = Modifier, snackbarHostState: SnackbarHostState) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    var taskDescription by remember { mutableStateOf("") }
-    var selectedGrade by remember { mutableStateOf<Double?>(null) }
+
+    var taskDescription by rememberSaveable { mutableStateOf("") }
+    var selectedGrade by rememberSaveable { mutableStateOf<Double?>(null) }
+    var editingTask by rememberSaveable(saver = TaskSaver) { mutableStateOf<Task?>(null) }
+
     val grades = listOf(3.0, 3.5, 4.0, 4.5, 5.0)
-
-
-    var editingTask by remember { mutableStateOf<Task?>(null) }
-
-
     val tasks by StorageManager.getAllTasks(context).collectAsState(initial = emptyList())
 
-
-    LaunchedEffect(editingTask) {
-        if (editingTask != null) {
-            taskDescription = editingTask!!.description
-            selectedGrade = editingTask!!.grade
-        } else {
-            taskDescription = ""
-            selectedGrade = null
-        }
-    }
 
     Box(
         modifier = modifier
@@ -96,231 +87,240 @@ fun AddTaskScreen(modifier: Modifier = Modifier, snackbarHostState: SnackbarHost
             .background(Color.Black.copy(alpha = 0.9f))
             .padding(24.dp)
     ) {
-        Column(
+        LazyColumn(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = if (editingTask == null) "Dodaj Zadanie" else "Edytuj Zadanie",
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 32.dp)
-            )
+            item {
+                Text(
+                    text = if (editingTask == null) "Dodaj Zadanie" else "Edytuj Zadanie",
+                    color = Color.White,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 32.dp)
+                )
+            }
+            item {
+                OutlinedTextField(
+                    value = taskDescription,
+                    onValueChange = { taskDescription = it },
+                    label = { Text("Opis zadania") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White.copy(alpha = 0.1f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = Color.White.copy(alpha = 0.8f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                )
+            }
+            item {
+                Text(
+                    text = "Wybierz ocenę:",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 18.sp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                )
+            }
 
-            OutlinedTextField(
-                value = taskDescription,
-                onValueChange = { taskDescription = it },
-                label = { Text("Opis zadania") },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White.copy(alpha = 0.1f),
-                    unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
-                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                    unfocusedLabelColor = Color.White.copy(alpha = 0.8f),
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-            )
+            item {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(grades) { grade ->
+                        Button(
+                            onClick = { selectedGrade = grade },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (selectedGrade == grade)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    Color.White.copy(alpha = 0.1f)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "$grade",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
 
-            Text(
-                text = "Wybierz ocenę:",
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 18.sp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            )
 
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(grades) { grade ->
-                    Button(
-                        onClick = { selectedGrade = grade },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (selectedGrade == grade) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                Color.White.copy(alpha = 0.1f)
+            item {
+                Spacer(modifier = Modifier.height(32.dp))
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            if (taskDescription.isBlank()) {
+                                snackbarHostState.showSnackbar("Opis zadania nie może być pusty.")
+                                return@launch
                             }
-                        ),
-                        shape = RoundedCornerShape(12.dp)
+
+                            val gradeToSave = selectedGrade
+                            if (gradeToSave == null) {
+                                snackbarHostState.showSnackbar("Proszę wybrać ocenę.")
+                                return@launch
+                            }
+
+                            val newTask = Task(taskDescription, gradeToSave)
+
+                            try {
+                                taskDescription = ""
+                                selectedGrade = null
+
+                                if (editingTask == null) {
+                                    StorageManager.addTask(context, newTask)
+                                    snackbarHostState.showSnackbar("Zadanie zapisane pomyślnie!")
+                                } else {
+                                    val taskToUpdate = editingTask
+                                    editingTask = null
+
+                                    coroutineScope.launch {
+                                        StorageManager.updateTask(context, taskToUpdate!!, newTask)
+                                        snackbarHostState.showSnackbar("Zadanie zaktualizowane pomyślnie!")
+                                    }
+                                }
+
+                            } catch (e: Exception) {
+                                snackbarHostState.showSnackbar("Błąd podczas zapisywania zadania.")
+                                e.printStackTrace()
+                            }
+                        }
+                    },
+                    shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .height(50.dp)
+                ) {
+                    Text(
+                        text = if (editingTask == null) "Zapisz Zadanie" else "Zaktualizuj Zadanie",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+
+            if (editingTask != null) {
+                item {
+                    Button(
+                        onClick = {
+                            editingTask = null
+                            taskDescription = ""
+                            selectedGrade = null
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Anulowano edycję.")
+                            }
+                        },
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.6f)),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(50.dp)
+                            .padding(top = 8.dp)
                     ) {
                         Text(
-                            text = "$grade",
+                            "Anuluj Edycję",
                             color = Color.White,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-
-            Button(
-                onClick = {
-                    coroutineScope.launch {
-                        if (taskDescription.isBlank()) {
-                            snackbarHostState.showSnackbar("Opis zadania nie może być pusty.")
-                            return@launch
-                        }
-
-                        val gradeToSave = selectedGrade
-                        if (gradeToSave == null) {
-                            snackbarHostState.showSnackbar("Proszę wybrać ocenę.")
-                            return@launch
-                        }
-
-                        val currentTaskDescription = taskDescription
-
-
-                        val newTask = Task(currentTaskDescription, gradeToSave)
-
-                        try {
-                            taskDescription = ""
-                            selectedGrade = null
-
-                            if (editingTask == null) {
-
-                                StorageManager.addTask(context, newTask)
-                                snackbarHostState.showSnackbar("Zadanie zapisane pomyślnie!")
-                            } else {
-
-                                StorageManager.updateTask(context, editingTask!!, newTask)
-                                snackbarHostState.showSnackbar("Zadanie zaktualizowane pomyślnie!")
-                                editingTask = null
-                            }
-
-
-                        } catch (e: Exception) {
-                            snackbarHostState.showSnackbar("Błąd podczas zapisywania zadania.")
-                            e.printStackTrace()
-                        }
-                    }
-                },
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .height(50.dp)
-            ) {
+            item {
+                Spacer(modifier = Modifier.height(32.dp))
                 Text(
-                    text = if (editingTask == null) "Zapisz Zadanie" else "Zaktualizuj Zadanie",
+                    text = "Lista Zadań",
                     color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
                 )
             }
-
-
-            if (editingTask != null) {
-                Button(
-                    onClick = {
-                        editingTask = null
-                        taskDescription = ""
-                        selectedGrade = null
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Anulowano edycję.")
-                        }
-                    },
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.6f)),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(50.dp)
-                        .padding(top = 8.dp)
-                ) {
-                    Text("Anuluj Edycję", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-
-            Text(
-                text = "Lista Zadań",
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
 
             if (tasks.isEmpty()) {
-                Text(
-                    text = "Brak dodanych zadań.",
-                    color = Color.Gray,
-                    fontSize = 18.sp,
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
+                item {
+                    Text(
+                        text = "Brak dodanych zadań.",
+                        color = Color.Gray,
+                        fontSize = 18.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                }
             } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-
-                    items(tasks.sortedBy { it.grade } ) { task ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = Color.White.copy(alpha = 0.1f)
-                            ),
-                            shape = RoundedCornerShape(8.dp)
+                items(tasks.sortedBy { it.grade }) { task ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White.copy(alpha = 0.1f)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = task.description,
-                                        color = Color.White,
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = "Ocena: ${task.grade}",
-                                        color = Color.White.copy(alpha = 0.8f),
-                                        fontSize = 14.sp
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = task.description,
+                                    color = Color.White,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "Ocena: ${task.grade}",
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Row {
+                                IconButton(onClick = {
+                                    editingTask = task
+                                    taskDescription = task.description
+                                    selectedGrade = task.grade
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edytuj zadanie",
+                                        tint = Color.Yellow
                                     )
                                 }
-                                Row {
-                                    IconButton(onClick = {
-                                        editingTask = task
-                                    }) {
-                                        Icon(
-                                            imageVector = Icons.Default.Edit,
-                                            contentDescription = "Edytuj zadanie",
-                                            tint = Color.Yellow
-                                        )
+                                IconButton(onClick = {
+                                    coroutineScope.launch {
+                                        StorageManager.deleteTask(context, task)
+                                        snackbarHostState.showSnackbar("Zadanie usunięte: ${task.description}")
                                     }
-                                    IconButton(onClick = {
-                                        coroutineScope.launch {
-                                            StorageManager.deleteTask(context, task)
-                                            snackbarHostState.showSnackbar("Zadanie usunięte: ${task.description}")
-                                        }
-                                    }) {
-                                        Icon(
-                                            imageVector = Icons.Default.Delete,
-                                            contentDescription = "Usuń zadanie",
-                                            tint = Color.Red
-                                        )
-                                    }
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Usuń zadanie",
+                                        tint = Color.Red
+                                    )
                                 }
                             }
                         }
@@ -328,29 +328,57 @@ fun AddTaskScreen(modifier: Modifier = Modifier, snackbarHostState: SnackbarHost
                 }
             }
 
-            Button(
-                onClick = {
-                    val intent = Intent(context, GradingActivity::class.java)
-                    context.startActivity(intent)
-                },
-                shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
-                    .padding(top = 16.dp)
-            ) {
-                Text(
-                    "Zakończ Dodawanie Zadań",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            item {
+                Button(
+                    onClick = {
+                        val intent = Intent(context, GradingActivity::class.java)
+                        context.startActivity(intent)
+                    },
+                    shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .padding(top = 16.dp)
+                ) {
+                    Text(
+                        "Zakończ Dodawanie Zadań",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }
 }
+
+val TaskSaver = Saver<MutableState<Task?>, Any>(
+    save = { state ->
+        state.value?.let { task ->
+            listOf(task.description, task.grade)
+        }
+    },
+    restore = { list ->
+        // do zapisaywania przy rotacji potrzebny jest array access, więc zrobiony cast do List<Any> który to umożliwia
+        val restoredList = list as? List<Any>
+        if (restoredList != null &&
+            restoredList.size == 2 &&
+            restoredList[0] is String &&
+            restoredList[1] is Double
+        ) {
+            mutableStateOf(
+                Task(
+                    description = restoredList[0] as String,
+                    grade = restoredList[1] as Double
+                )
+            )
+        } else {
+            mutableStateOf(null)
+        }
+    }
+)
 
 @Preview(showBackground = true)
 @Composable
